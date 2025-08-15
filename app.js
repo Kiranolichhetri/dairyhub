@@ -2,28 +2,7 @@
 
 // Application Data
 let appData = {
-    products: [
-        {"id": 1, "name": "Fresh Whole Milk", "category": "milk", "price": 3.99, "image": "milk1.jpg", "description": "Farm fresh whole milk, rich in calcium and vitamins", "stock": 50, "rating": 4.5, "brand": "Dairy Farm"},
-        {"id": 2, "name": "Organic Skim Milk", "category": "milk", "price": 4.49, "image": "milk2.jpg", "description": "Organic skim milk, perfect for health-conscious consumers", "stock": 30, "rating": 4.2, "brand": "Green Valley"},
-        {"id": 3, "name": "Aged Cheddar Cheese", "category": "cheese", "price": 8.99, "image": "cheese1.jpg", "description": "Premium aged cheddar cheese with sharp, rich flavor", "stock": 25, "rating": 4.8, "brand": "Artisan Cheese"},
-        {"id": 4, "name": "Fresh Mozzarella", "category": "cheese", "price": 5.99, "image": "cheese2.jpg", "description": "Fresh mozzarella cheese, perfect for pizza and salads", "stock": 40, "rating": 4.6, "brand": "Italian Style"},
-        {"id": 5, "name": "Organic Butter", "category": "butter", "price": 6.99, "image": "butter1.jpg", "description": "Creamy organic butter made from grass-fed cows", "stock": 35, "rating": 4.7, "brand": "Organic Fields"},
-        {"id": 6, "name": "Salted Butter", "category": "butter", "price": 4.99, "image": "butter2.jpg", "description": "Classic salted butter for cooking and baking", "stock": 45, "rating": 4.3, "brand": "Farm Fresh"},
-        {"id": 7, "name": "Greek Yogurt", "category": "yogurt", "price": 5.49, "image": "yogurt1.jpg", "description": "Thick and creamy Greek yogurt, high in protein", "stock": 60, "rating": 4.4, "brand": "Mediterranean"},
-        {"id": 8, "name": "Vanilla Ice Cream", "category": "ice-cream", "price": 7.99, "image": "icecream1.jpg", "description": "Premium vanilla ice cream made with real vanilla beans", "stock": 20, "rating": 4.9, "brand": "Creamy Dreams"},
-        {"id": 9, "name": "Heavy Cream", "category": "cream", "price": 4.99, "image": "cream1.jpg", "description": "Rich heavy cream for cooking and baking", "stock": 30, "rating": 4.2, "brand": "Dairy Farm"},
-        {"id": 10, "name": "Swiss Cheese", "category": "cheese", "price": 9.99, "image": "cheese3.jpg", "description": "Authentic Swiss cheese with characteristic holes", "stock": 15, "rating": 4.5, "brand": "Alpine Dairy"},
-        {"id": 11, "name": "Low-Fat Milk", "category": "milk", "price": 3.79, "image": "milk3.jpg", "description": "Low-fat milk for health-conscious families", "stock": 40, "rating": 4.1, "brand": "Healthy Choice"},
-        {"id": 12, "name": "Goat Cheese", "category": "cheese", "price": 7.99, "image": "cheese4.jpg", "description": "Creamy goat cheese with tangy flavor", "stock": 20, "rating": 4.3, "brand": "Artisan Cheese"},
-        {"id": 13, "name": "Unsalted Butter", "category": "butter", "price": 5.49, "image": "butter3.jpg", "description": "Premium unsalted butter for baking", "stock": 30, "rating": 4.6, "brand": "Baker's Choice"},
-        {"id": 14, "name": "Strawberry Yogurt", "category": "yogurt", "price": 4.99, "image": "yogurt2.jpg", "description": "Creamy yogurt with real strawberry pieces", "stock": 50, "rating": 4.2, "brand": "Fruit Fresh"},
-        {"id": 15, "name": "Chocolate Ice Cream", "category": "ice-cream", "price": 8.49, "image": "icecream2.jpg", "description": "Rich chocolate ice cream made with cocoa", "stock": 25, "rating": 4.7, "brand": "Creamy Dreams"},
-        {"id": 16, "name": "Sour Cream", "category": "cream", "price": 3.99, "image": "cream2.jpg", "description": "Fresh sour cream for cooking and dips", "stock": 35, "rating": 4.0, "brand": "Fresh Valley"},
-        {"id": 17, "name": "Almond Milk", "category": "milk", "price": 4.99, "image": "milk4.jpg", "description": "Dairy-free almond milk alternative", "stock": 45, "rating": 4.3, "brand": "Plant Pure"},
-        {"id": 18, "name": "Blue Cheese", "category": "cheese", "price": 10.99, "image": "cheese5.jpg", "description": "Premium blue cheese with strong flavor", "stock": 10, "rating": 4.4, "brand": "Gourmet Select"},
-        {"id": 19, "name": "Whipped Cream", "category": "cream", "price": 5.99, "image": "cream3.jpg", "description": "Light and fluffy whipped cream", "stock": 25, "rating": 4.1, "brand": "Dairy Delight"},
-        {"id": 20, "name": "Mint Ice Cream", "category": "ice-cream", "price": 7.79, "image": "icecream3.jpg", "description": "Refreshing mint ice cream with chocolate chips", "stock": 30, "rating": 4.5, "brand": "Cool Treats"}
-    ],
+    products: [],
     categories: [
         {"id": "milk", "name": "Milk", "description": "Fresh and organic milk varieties", "icon": "🥛"},
         {"id": "cheese", "name": "Cheese", "description": "Artisanal and aged cheese selection", "icon": "🧀"},
@@ -32,21 +11,9 @@ let appData = {
         {"id": "ice-cream", "name": "Ice Cream", "description": "Premium ice cream flavors", "icon": "🍦"},
         {"id": "cream", "name": "Cream", "description": "Rich cream for cooking and baking", "icon": "🥛"}
     ],
-    users: [
-        {"id": 1, "username": "admin", "email": "admin@dairyhub.com", "role": "admin", "password": "admin123"},
-        {"id": 2, "username": "john_doe", "email": "john@email.com", "role": "customer", "password": "password123"},
-        {"id": 3, "username": "jane_smith", "email": "jane@email.com", "role": "customer", "password": "password123"}
-    ],
-    orders: [
-        {"id": "ORD001", "userId": 2, "status": "delivered", "total": 15.48, "date": "2025-08-05", "items": [{"productId": 1, "quantity": 2, "price": 3.99}, {"productId": 5, "quantity": 1, "price": 6.99}]},
-        {"id": "ORD002", "userId": 3, "status": "shipped", "total": 24.97, "date": "2025-08-08", "items": [{"productId": 3, "quantity": 1, "price": 8.99}, {"productId": 8, "quantity": 2, "price": 7.99}]},
-        {"id": "ORD003", "userId": 2, "status": "processing", "total": 10.98, "date": "2025-08-10", "items": [{"productId": 7, "quantity": 2, "price": 5.49}]}
-    ],
-    reviews: [
-        {"id": 1, "productId": 1, "userId": 2, "rating": 5, "comment": "Excellent quality milk, very fresh!", "date": "2025-08-06"},
-        {"id": 2, "productId": 3, "userId": 3, "rating": 4, "comment": "Great cheese, perfect for my recipes", "date": "2025-08-07"},
-        {"id": 3, "productId": 8, "userId": 2, "rating": 5, "comment": "Best vanilla ice cream ever!", "date": "2025-08-09"}
-    ]
+    users: [],
+    orders: [],
+    reviews: []
 };
 
 // Application State
@@ -165,47 +132,70 @@ function showRegisterModal() {
     modal.show();
 }
 
-function login(email, password) {
-    const user = appData.users.find(u => u.email === email && u.password === password);
-    if (user) {
-        appState.currentUser = user;
-        updateAuthUI();
-        showNotification(`Welcome back, ${user.username}!`);
-        bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
-        return true;
-    }
-    return false;
-}
-
-function register(username, email, password) {
-    const existingUser = appData.users.find(u => u.email === email || u.username === username);
-    if (existingUser) {
+// Login a user with Firebase Auth
+async function login(email, password) {
+    try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        // Find user in Firestore users collection
+        const userSnapshot = await db.collection('users').where('email', '==', email).get();
+        if (!userSnapshot.empty) {
+            appState.currentUser = { id: userSnapshot.docs[0].id, ...userSnapshot.docs[0].data() };
+            updateAuthUI();
+            showNotification(`Welcome back, ${appState.currentUser.username}!`);
+            bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+            return true;
+        } else {
+            showNotification('User not found in database', 'error');
+            return false;
+        }
+    } catch (error) {
+        showNotification('Invalid email or password', 'error');
         return false;
     }
-    
-    const newUser = {
-        id: appData.users.length + 1,
-        username,
-        email,
-        password,
-        role: 'customer'
-    };
-    
-    appData.users.push(newUser);
-    appState.currentUser = newUser;
-    updateAuthUI();
-    showNotification(`Welcome to DairyHub, ${username}!`);
-    bootstrap.Modal.getInstance(document.getElementById('registerModal')).hide();
-    return true;
 }
 
+// Register a new user with Firebase Auth and Firestore
+async function register(username, email, password) {
+    const existingUser = appData.users.find(u => u.email === email || u.username === username);
+    if (existingUser) {
+        showNotification('Username or email already exists', 'error');
+        return false;
+    }
+
+    const newUser = {
+        username,
+        email,
+        role: 'customer'
+    };
+
+    try {
+        // Register with Firebase Auth
+        await auth.createUserWithEmailAndPassword(email, password);
+        // Add user to Firestore
+        const userRef = await db.collection('users').add(newUser);
+        newUser.id = userRef.id;
+        appData.users.push(newUser);
+        appState.currentUser = newUser;
+        updateAuthUI();
+        showNotification(`Welcome to DairyHub, ${username}!`);
+        bootstrap.Modal.getInstance(document.getElementById('registerModal')).hide();
+        return true;
+    } catch (error) {
+        showNotification('Registration failed', 'error');
+        return false;
+    }
+}
+
+// Logout user
 function logout() {
-    appState.currentUser = null;
-    appState.cart = [];
-    updateAuthUI();
-    updateCartUI();
-    showPage('home');
-    showNotification('You have been logged out successfully.');
+    auth.signOut().then(() => {
+        appState.currentUser = null;
+        appState.cart = [];
+        updateAuthUI();
+        updateCartUI();
+        showPage('home');
+        showNotification('You have been logged out successfully.');
+    });
 }
 
 function updateAuthUI() {
@@ -726,12 +716,12 @@ function validateCurrentStep() {
     return true;
 }
 
-function processOrder() {
+async function processOrder() {
     const orderId = 'ORD' + Date.now().toString().substr(-6);
     const subtotal = appState.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const shippingCost = parseFloat(document.querySelector('input[name="shipping"]:checked').value);
     const total = subtotal + shippingCost;
-    
+
     const order = {
         id: orderId,
         userId: appState.currentUser.id,
@@ -744,28 +734,37 @@ function processOrder() {
             price: item.price
         }))
     };
-    
-    appData.orders.push(order);
-    
-    // Update product stock
-    appState.cart.forEach(item => {
-        const product = appData.products.find(p => p.id === item.productId);
-        if (product) {
-            product.stock -= item.quantity;
+
+    try {
+        // Save order to Firestore
+        await db.collection('orders').add(order);
+        appData.orders.push(order);
+
+        // Update product stock in Firestore
+        for (const item of appState.cart) {
+            const productRef = db.collection('products').doc(item.productId);
+            const product = appData.products.find(p => p.id === item.productId);
+            if (product) {
+                await productRef.update({ stock: product.stock - item.quantity });
+            }
         }
-    });
-    
-    // Clear cart
-    appState.cart = [];
-    updateCartUI();
-    
-    // Show confirmation
-    document.getElementById('orderNumber').textContent = orderId;
-    const deliveryDate = new Date();
-    deliveryDate.setDate(deliveryDate.getDate() + 5);
-    document.getElementById('estimatedDelivery').textContent = formatDate(deliveryDate.toISOString().split('T')[0]);
-    
-    showNotification('Order placed successfully!');
+
+        // Clear cart
+        appState.cart = [];
+        updateCartUI();
+
+        // Show confirmation
+        document.getElementById('orderNumber').textContent = orderId;
+        const deliveryDate = new Date();
+        deliveryDate.setDate(deliveryDate.getDate() + 5);
+        document.getElementById('estimatedDelivery').textContent = formatDate(deliveryDate.toISOString().split('T')[0]);
+
+        showNotification('Order placed successfully!');
+        fetchOrders(); // Refresh orders from Firestore
+        fetchProducts(); // Refresh products from Firestore
+    } catch (error) {
+        showNotification('Failed to place order', 'error');
+    }
 }
 
 function loadCheckoutSummary() {
@@ -984,11 +983,19 @@ function editProduct(productId) {
     showNotification('Edit functionality would be implemented here', 'info');
 }
 
-function deleteProduct(productId) {
+async function deleteProduct(productId) {
     if (confirm('Are you sure you want to delete this product?')) {
-        appData.products = appData.products.filter(p => p.id !== productId);
-        loadAdminProducts();
-        showNotification('Product deleted successfully');
+        // Find the Firestore document with this productId
+        const product = appData.products.find(p => p.id === productId);
+        if (!product) return;
+        try {
+            await db.collection('products').doc(product.id).delete();
+            showNotification('Product deleted successfully');
+            fetchProducts(); // Refresh product list from Firestore
+            loadAdminProducts();
+        } catch (error) {
+            showNotification('Failed to delete product', 'error');
+        }
     }
 }
 
@@ -1002,6 +1009,61 @@ function performSearch() {
         }, 100);
     }
 }
+
+// Fetch all products from Firestore 'products' collection
+async function fetchProducts() {
+    const snapshot = await db.collection('products').get();
+    appData.products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // After fetching, update UI as needed
+    if (appState.currentPageName === 'products') {
+        applyFilters();
+    }
+    if (appState.currentPageName === 'home') {
+        loadFeaturedProducts();
+    }
+}
+
+// Fetch all users from Firestore 'users' collection
+async function fetchUsers() {
+    const snapshot = await db.collection('users').get();
+    appData.users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+// Fetch all orders from Firestore 'orders' collection
+async function fetchOrders() {
+    const snapshot = await db.collection('orders').get();
+    appData.orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+// Fetch all reviews from Firestore 'reviews' collection
+async function fetchReviews() {
+    const snapshot = await db.collection('reviews').get();
+    appData.reviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+// Add a review to Firestore
+async function addReview(productId, userId, rating, comment) {
+    const review = {
+        productId,
+        userId,
+        rating,
+        comment,
+        date: new Date().toISOString()
+    };
+    try {
+        await db.collection('reviews').add(review);
+        showNotification('Review added successfully!');
+        fetchReviews();
+        loadProductReviews(productId);
+    } catch (error) {
+        showNotification('Failed to add review', 'error');
+    }
+}
+
+// Example usage:
+fetchProducts().then(products => {
+  console.log(products);
+});
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
@@ -1039,12 +1101,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Add product form
-    document.getElementById('addProductForm').addEventListener('submit', function(e) {
+    document.getElementById('addProductForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const inputs = e.target.elements;
         const newProduct = {
-            id: Math.max(...appData.products.map(p => p.id)) + 1,
             name: inputs[0].value,
             category: inputs[1].value,
             price: parseFloat(inputs[2].value),
@@ -1054,12 +1115,17 @@ document.addEventListener('DOMContentLoaded', function() {
             rating: 0,
             image: 'placeholder.jpg'
         };
-        
-        appData.products.push(newProduct);
-        bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
-        e.target.reset();
-        showNotification('Product added successfully');
-        loadAdminProducts();
+
+        try {
+            await db.collection('products').add(newProduct);
+            bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
+            e.target.reset();
+            showNotification('Product added successfully');
+            fetchProducts(); // Refresh product list from Firestore
+            loadAdminProducts();
+        } catch (error) {
+            showNotification('Failed to add product', 'error');
+        }
     });
     
     // Search input
@@ -1073,4 +1139,8 @@ document.addEventListener('DOMContentLoaded', function() {
     updateAuthUI();
     updateCartUI();
     loadHomePage();
+    fetchProducts();
+    fetchUsers();
+    fetchOrders();
+    fetchReviews(); // <-- Add this line
 });

@@ -1,0 +1,14 @@
+{
+  "name": "firebase-migration",
+  "version": "1.0.0",
+  "description": "A project to migrate an existing JSON database to Firebase.",
+  "main": "src/migrate.js",
+  "scripts": {
+    "migrate": "node src/migrate.js"
+  },
+  "dependencies": {
+    "firebase": "^9.0.0"
+  },
+  "author": "",
+  "license": "ISC"
+}

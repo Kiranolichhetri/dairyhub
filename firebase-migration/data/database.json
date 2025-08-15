@@ -1,0 +1,58 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "name": "Fresh Milk",
+      "category": "milk",
+      "price": 2.99,
+      "stock": 100,
+      "brand": "DairyFarm",
+      "description": "Fresh whole milk from local farms."
+    },
+    {
+      "id": 2,
+      "name": "Cheddar Cheese",
+      "category": "cheese",
+      "price": 5.49,
+      "stock": 50,
+      "brand": "CheeseCo",
+      "description": "Aged cheddar cheese with a rich flavor."
+    },
+    {
+      "id": 3,
+      "name": "Butter",
+      "category": "butter",
+      "price": 3.99,
+      "stock": 75,
+      "brand": "ButterBest",
+      "description": "Creamy butter made from fresh cream."
+    },
+    {
+      "id": 4,
+      "name": "Greek Yogurt",
+      "category": "yogurt",
+      "price": 4.29,
+      "stock": 60,
+      "brand": "YogurtDelight",
+      "description": "Thick and creamy Greek yogurt."
+    },
+    {
+      "id": 5,
+      "name": "Vanilla Ice Cream",
+      "category": "ice-cream",
+      "price": 6.99,
+      "stock": 30,
+      "brand": "IceCreamHeaven",
+      "description": "Rich vanilla ice cream made with real vanilla beans."
+    },
+    {
+      "id": 6,
+      "name": "Heavy Cream",
+      "category": "cream",
+      "price": 4.99,
+      "stock": 40,
+      "brand": "CreamyDreams",
+      "description": "Rich heavy cream perfect for cooking and baking."
+    }
+  ]
+}
