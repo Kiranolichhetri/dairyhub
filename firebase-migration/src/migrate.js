@@ -1,30 +1,40 @@
-const fs = require('fs');
 const admin = require('firebase-admin');
-const firebaseConfig = require('./firebaseConfig');
+const fs = require('fs');
+const path = require('path');
 
-// Initialize Firebase Admin SDK
+// Path to your service account key
+const serviceAccount = require('../serviceAccountKey.json');
+
+// Initialize Firebase Admin
 admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    databaseURL: firebaseConfig.databaseURL
+  credential: admin.credential.cert(serviceAccount)
 });
 
-// Read the JSON database
-fs.readFile('./data/database.json', 'utf8', (err, data) => {
-    if (err) {
-        console.error('Error reading the JSON file:', err);
-        return;
-    }
+const db = admin.firestore();
 
-    const jsonData = JSON.parse(data);
-    const db = admin.database();
-    const ref = db.ref('your_firebase_node'); // Change this to your desired Firebase node
+// Load your JSON data
+const dataPath = path.join(__dirname, '../data/database.json');
+const rawData = fs.readFileSync(dataPath);
+const { products = [], users = [], orders = [], reviews = [] } = JSON.parse(rawData);
 
-    // Process and upload data to Firebase
-    ref.set(jsonData, (error) => {
-        if (error) {
-            console.error('Error uploading data to Firebase:', error);
-        } else {
-            console.log('Data successfully migrated to Firebase!');
-        }
-    });
-});
+// Migrate products to Firestore
+async function migrateCollection(collectionName, items) {
+  if (!items.length) return;
+  const batch = db.batch();
+  items.forEach(item => {
+    const docRef = db.collection(collectionName).doc();
+    batch.set(docRef, { ...item });
+  });
+  await batch.commit();
+  console.log(`${collectionName} migrated successfully!`);
+}
+
+async function migrateAll() {
+  await migrateCollection('products', products);
+  await migrateCollection('users', users);
+  await migrateCollection('orders', orders);
+  await migrateCollection('reviews', reviews);
+  console.log('All data migrated!');
+}
+
+migrateAll().catch(console.error);

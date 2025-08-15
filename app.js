@@ -181,6 +181,7 @@ async function register(username, email, password) {
         bootstrap.Modal.getInstance(document.getElementById('registerModal')).hide();
         return true;
     } catch (error) {
+        console.error(error);
         showNotification('Registration failed', 'error');
         return false;
     }
@@ -390,7 +391,7 @@ function createProductCard(product) {
                 <div class="stock-info ${stockClass}">${stockText}</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="product-price">${formatPrice(product.price)}</span>
-                    <button class="btn btn-primary btn-sm" onclick="addToCart(${product.id})" 
+                    <button class="btn btn-primary btn-sm" onclick="addToCart('${product.id}')" 
                             ${product.stock === 0 ? 'disabled' : ''}>
                         Add to Cart
                     </button>
@@ -481,6 +482,7 @@ function loadProductDetail(product) {
     `;
     
     loadProductReviews(product.id);
+    renderReviewForm(product.id); // <-- Add this line
 }
 
 function changeQuantity(delta) {
@@ -526,10 +528,59 @@ function loadProductReviews(productId) {
     }).join('');
 }
 
+// 1. Add this function to render the review form and handle submission
+function renderReviewForm(productId) {
+    const container = document.getElementById('reviewFormSection');
+    if (!appState.currentUser) {
+        container.innerHTML = `<p class="text-muted">Please <a href="#" onclick="showLoginModal()">login</a> to write a review.</p>`;
+        return;
+    }
+    container.innerHTML = `
+        <form id="reviewForm" class="mb-3">
+            <div class="mb-2">
+                <label for="reviewRating" class="form-label">Rating</label>
+                <select id="reviewRating" class="form-select" required>
+                    <option value="">Select rating</option>
+                    <option value="5">★★★★★</option>
+                    <option value="4">★★★★☆</option>
+                    <option value="3">★★★☆☆</option>
+                    <option value="2">★★☆☆☆</option>
+                    <option value="1">★☆☆☆☆</option>
+                </select>
+            </div>
+            <div class="mb-2">
+                <label for="reviewComment" class="form-label">Comment</label>
+                <textarea id="reviewComment" class="form-control" rows="2" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Review</button>
+        </form>
+    `;
+
+    document.getElementById('reviewForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const rating = parseInt(document.getElementById('reviewRating').value);
+        const comment = document.getElementById('reviewComment').value.trim();
+        if (!rating || !comment) {
+            showNotification('Please provide a rating and comment.', 'warning');
+            return;
+        }
+        await addReview(productId, appState.currentUser.id, rating, comment);
+        e.target.reset();
+    });
+}
+
 // Shopping Cart
 function addToCart(productId, quantity = 1) {
     const product = appData.products.find(p => p.id === productId);
-    if (!product || product.stock === 0) return;
+    if (!product) {
+        showNotification('Product not found', 'error');
+        return;
+    }
+    
+    if (product.stock === 0) {
+        showNotification('Product is out of stock', 'error');
+        return;
+    }
     
     const existingItem = appState.cart.find(item => item.productId === productId);
     
@@ -1068,20 +1119,18 @@ fetchProducts().then(products => {
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
     // Login form
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
         
-        if (login(email, password)) {
+        if (await login(email, password)) {
             document.getElementById('loginForm').reset();
-        } else {
-            showNotification('Invalid email or password', 'error');
         }
     });
     
     // Register form
-    document.getElementById('registerForm').addEventListener('submit', function(e) {
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const username = document.getElementById('registerUsername').value;
         const email = document.getElementById('registerEmail').value;
@@ -1093,10 +1142,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        if (register(username, email, password)) {
+        if (await register(username, email, password)) {
             document.getElementById('registerForm').reset();
-        } else {
-            showNotification('Username or email already exists', 'error');
         }
     });
     
@@ -1117,7 +1164,8 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            await db.collection('products').add(newProduct);
+            const docRef = await db.collection('products').add(newProduct);
+            newProduct.id = docRef.id;
             bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
             e.target.reset();
             showNotification('Product added successfully');
