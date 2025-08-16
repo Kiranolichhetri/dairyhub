@@ -17,15 +17,29 @@ const dataPath = path.join(__dirname, '../data/database.json');
 const rawData = fs.readFileSync(dataPath);
 const { products = [], users = [], orders = [], reviews = [] } = JSON.parse(rawData);
 
-// Migrate products to Firestore
+// Migrate a collection and preserve ids when present
 async function migrateCollection(collectionName, items) {
-  if (!items.length) return;
-  const batch = db.batch();
-  items.forEach(item => {
-    const docRef = db.collection(collectionName).doc();
-    batch.set(docRef, { ...item });
-  });
-  await batch.commit();
+  if (!Array.isArray(items) || items.length === 0) {
+    console.log(`No items for ${collectionName}, skipping.`);
+    return;
+  }
+
+  console.log(`Starting migration for ${collectionName} (${items.length} items)`);
+
+  for (const item of items) {
+    try {
+      if (item.id) {
+        const id = item.id.toString();
+        const { id: _id, ...rest } = item;
+        await db.collection(collectionName).doc(id).set(rest);
+      } else {
+        await db.collection(collectionName).add(item);
+      }
+    } catch (err) {
+      console.error(`Failed to import item into ${collectionName}:`, err.message || err);
+    }
+  }
+
   console.log(`${collectionName} migrated successfully!`);
 }
 
@@ -37,4 +51,7 @@ async function migrateAll() {
   console.log('All data migrated!');
 }
 
-migrateAll().catch(console.error);
+migrateAll().catch(err => {
+  console.error('Migration failed:', err);
+  process.exit(1);
+});

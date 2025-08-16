@@ -36,7 +36,13 @@ function generateId() {
 }
 
 function formatPrice(price) {
-    return `$${price.toFixed(2)}`;
+    // Show prices in Nepalese Rupees (NPR) with grouping and two decimals
+    try {
+        const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(price);
+        return `रू ${formatted}`;
+    } catch (e) {
+        return `रू ${price.toFixed(2)}`;
+    }
 }
 
 function formatDate(dateString) {
@@ -66,21 +72,101 @@ function generateStars(rating) {
     return stars;
 }
 
-function showNotification(message, type = 'success') {
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type} position-fixed`;
-    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    alert.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close float-end" onclick="this.parentElement.remove()"></button>
-    `;
-    document.body.appendChild(alert);
-    
-    setTimeout(() => {
-        if (alert.parentElement) {
-            alert.remove();
+// Validate image URLs (only allow absolute http(s) URLs or data URIs)
+function isValidImageUrl(url) {
+    return typeof url === 'string' && /^(https?:\/\/|data:)/.test(url);
+}
+
+// Load product image for an element. Accepts absolute URLs, data: URIs, or storage paths
+async function loadProductImage(product, elementId) {
+    try {
+        const el = document.getElementById(elementId);
+        if (!el || !product || !product.image) return;
+
+        const src = product.image;
+        if (isValidImageUrl(src)) {
+            el.src = src;
+            el.style.display = 'block';
+            return;
         }
-    }, 5000);
+
+        // Attempt to resolve as a Firebase Storage path
+        if (typeof firebase === 'undefined' || typeof firebase.storage === 'undefined') {
+            console.debug('Firebase Storage SDK not available; cannot resolve', src);
+            return;
+        }
+
+        // Normalize common forms: allow 'foo.jpg' or 'product-images/foo.jpg'
+        let refPath = src;
+        if (!refPath.includes('/') && !refPath.startsWith('product-images/')) {
+            refPath = `product-images/${refPath}`;
+        }
+
+        const storageRef = firebase.storage().ref().child(refPath);
+        const url = await storageRef.getDownloadURL();
+        el.src = url;
+        el.style.display = 'block';
+
+        // If this is the add product preview, persist the resolved URL so submit uses it
+        const form = document.getElementById('addProductForm');
+        if (form && elementId === 'addProductPreview') {
+            form.dataset.selectedImage = url;
+        }
+    } catch (err) {
+        console.debug('Failed to load product image for', product && product.id, err && err.code ? err.code : err);
+    }
+}
+
+function showNotification(message, type = 'success', options = {}) {
+    // Use Bootstrap toast for non-blocking notifications
+    try {
+        const container = document.getElementById('toastContainer') || document.body;
+        const toastId = `toast_${Date.now()}`;
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-bg-' + (type === 'error' ? 'danger' : (type === 'info' ? 'info' : 'success')) + ' border-0';
+        toast.id = toastId;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.style.minWidth = '200px';
+        const actionHtml = options.actionLabel ? `<button type="button" class="btn btn-sm btn-light me-2" id="toast_action_${toastId}">${options.actionLabel}</button>` : '';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                ${actionHtml}
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        (container === document.body ? document.body : container).appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+        bsToast.show();
+        // bind optional action callback
+        if (options.actionLabel && typeof options.actionCallback === 'function') {
+            // wait a tick for element to exist
+            setTimeout(() => {
+                const actionBtn = document.getElementById(`toast_action_${toastId}`);
+                if (actionBtn) actionBtn.addEventListener('click', () => {
+                    try { options.actionCallback(); } catch (e) { console.error(e); }
+                });
+            }, 0);
+        }
+
+        // auto-remove after hidden
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    } catch (e) {
+        console.warn('Toast failed, falling back to alert:', e);
+        alert(message);
+    }
+}
+
+function showLoader() {
+    const el = document.getElementById('globalLoader');
+    if (el) el.style.display = 'flex';
+}
+
+function hideLoader() {
+    const el = document.getElementById('globalLoader');
+    if (el) el.style.display = 'none';
 }
 
 // Page Navigation
@@ -134,6 +220,11 @@ function showRegisterModal() {
 
 // Login a user with Firebase Auth
 async function login(email, password) {
+    if (typeof auth === 'undefined' || typeof db === 'undefined') {
+        showNotification('Firebase is not initialized. Check your configuration.', 'error');
+        return false;
+    }
+
     try {
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         // Find user in Firestore users collection
@@ -145,17 +236,27 @@ async function login(email, password) {
             bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
             return true;
         } else {
-            showNotification('User not found in database', 'error');
+            showNotification('User found in Auth but not in Firestore. Please contact support.', 'error');
             return false;
         }
     } catch (error) {
-        showNotification('Invalid email or password', 'error');
+        console.error('Login error:', error);
+        const message = error && error.message ? error.message : 'Login failed';
+        showNotification(message, 'error');
         return false;
     }
 }
 
 // Register a new user with Firebase Auth and Firestore
 async function register(username, email, password) {
+    if (typeof auth === 'undefined' || typeof db === 'undefined') {
+        showNotification('Firebase is not initialized. Check your configuration.', 'error');
+        return false;
+    }
+
+    // Ensure we have the latest users list
+    await fetchUsers().catch(() => {});
+
     const existingUser = appData.users.find(u => u.email === email || u.username === username);
     if (existingUser) {
         showNotification('Username or email already exists', 'error');
@@ -170,19 +271,23 @@ async function register(username, email, password) {
 
     try {
         // Register with Firebase Auth
-        await auth.createUserWithEmailAndPassword(email, password);
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         // Add user to Firestore
-        const userRef = await db.collection('users').add(newUser);
-        newUser.id = userRef.id;
-        appData.users.push(newUser);
+    const userRef = await db.collection('users').add(newUser);
+    newUser.id = userRef.id;
+    // Refresh local users from Firestore
+    await fetchUsers().catch(() => {});
         appState.currentUser = newUser;
         updateAuthUI();
         showNotification(`Welcome to DairyHub, ${username}!`);
         bootstrap.Modal.getInstance(document.getElementById('registerModal')).hide();
+        // Refresh users/orders if needed
+        await fetchUsers().catch(() => {});
         return true;
     } catch (error) {
-        console.error(error);
-        showNotification('Registration failed', 'error');
+        console.error('Registration error:', error);
+        const message = error && error.message ? error.message : 'Registration failed';
+        showNotification(message, 'error');
         return false;
     }
 }
@@ -369,7 +474,15 @@ function displayProducts() {
             ${createProductCard(product)}
         </div>
     `).join('');
-    
+
+    // Resolve any storage-path images for visible products asynchronously
+    productsToShow.forEach(p => {
+        if (p.image && !isValidImageUrl(p.image)) {
+            // target the img element inside the product card
+            loadProductImage(p, `product-image-${p.id}`);
+        }
+    });
+
     displayPagination();
 }
 
@@ -379,10 +492,12 @@ function createProductCard(product) {
     
     return `
         <div class="product-card">
-            <div class="product-image-placeholder" onclick="showProductDetail(${product.id})"></div>
+            <div class="product-image-placeholder" onclick="showProductDetail('${product.id}')">
+                <img id="product-image-${product.id}" ${isValidImageUrl(product.image) ? `src="${product.image}"` : ''} alt="${product.name}" class="product-image" style="display:${isValidImageUrl(product.image) ? 'block' : 'none'}">
+            </div>
             <div class="card-body">
                 <div class="product-brand">${product.brand}</div>
-                <h5 class="product-title cursor-pointer" onclick="showProductDetail(${product.id})">${product.name}</h5>
+                <h5 class="product-title cursor-pointer" onclick="showProductDetail('${product.id}')">${product.name}</h5>
                 <p class="product-description">${product.description}</p>
                 <div class="product-rating">
                     <span class="rating-stars">${generateStars(product.rating)}</span>
@@ -449,7 +564,16 @@ function loadProductDetail(product) {
     const detailsContainer = document.getElementById('productDetails');
     const reviewsContainer = document.getElementById('reviewsSection');
     
-    imageContainer.innerHTML = '<div class="product-image-placeholder" style="height: 400px;"></div>';
+    imageContainer.innerHTML = isValidImageUrl(product.image) ? `<img id="product-detail-image" src="${product.image}" alt="${product.name}" style="max-width:100%; height:auto;">` : '<div class="product-image-placeholder" style="height: 400px;"></div>';
+
+    // If image is a storage path, attempt to resolve it
+    if (product.image && !isValidImageUrl(product.image)) {
+        // create a hidden img element placeholder if not present
+        if (!document.getElementById('product-detail-image')) {
+            imageContainer.innerHTML = `<img id="product-detail-image" alt="${product.name}" style="max-width:100%; height:auto; display:none;">`;
+        }
+        loadProductImage(product, 'product-detail-image');
+    }
     
     const stockClass = product.stock > 10 ? 'in-stock' : product.stock > 0 ? 'low-stock' : 'out-of-stock';
     const stockText = product.stock > 10 ? 'In Stock' : product.stock > 0 ? `Only ${product.stock} left` : 'Out of Stock';
@@ -473,7 +597,7 @@ function loadProductDetail(product) {
                 </div>
             </div>
             <div class="col-6">
-                <button class="btn btn-primary w-100" onclick="addToCartWithQuantity(${product.id})" 
+                <button class="btn btn-primary w-100" onclick="addToCartWithQuantity('${product.id}')" 
                         ${product.stock === 0 ? 'disabled' : ''}>
                     Add to Cart
                 </button>
@@ -672,8 +796,8 @@ function loadCartPage() {
         return `
             <div class="cart-item">
                 <div class="row align-items-center">
-                    <div class="col-2">
-                        <div class="cart-item-image"></div>
+                        <div class="col-2">
+                        <div class="cart-item-image"> <img id="product-cart-image-${product.id}" ${isValidImageUrl(product.image) ? `src="${product.image}"` : ''} alt="${product.name}" class="cart-image" style="display:${isValidImageUrl(product.image) ? 'block' : 'none'}"> </div>
                     </div>
                     <div class="col-4">
                         <h6>${product.name}</h6>
@@ -681,17 +805,17 @@ function loadCartPage() {
                     </div>
                     <div class="col-2">
                         <div class="quantity-controls">
-                            <button class="quantity-btn" onclick="updateCartQuantity(${item.productId}, ${item.quantity - 1})">-</button>
+                            <button class="quantity-btn" onclick="updateCartQuantity('${item.productId}', ${item.quantity - 1})">-</button>
                             <input type="number" class="quantity-input" value="${item.quantity}" 
-                                   onchange="updateCartQuantity(${item.productId}, parseInt(this.value))" min="1" max="${product.stock}">
-                            <button class="quantity-btn" onclick="updateCartQuantity(${item.productId}, ${item.quantity + 1})">+</button>
+                                   onchange="updateCartQuantity('${item.productId}', parseInt(this.value))" min="1" max="${product.stock}">
+                            <button class="quantity-btn" onclick="updateCartQuantity('${item.productId}', ${item.quantity + 1})">+</button>
                         </div>
                     </div>
                     <div class="col-2">
                         <strong>${formatPrice(item.price * item.quantity)}</strong>
                     </div>
                     <div class="col-2">
-                        <button class="btn btn-outline-danger btn-sm" onclick="removeFromCart(${item.productId})">
+                        <button class="btn btn-outline-danger btn-sm" onclick="removeFromCart('${item.productId}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -708,6 +832,14 @@ function loadCartPage() {
     shippingEl.textContent = formatPrice(shipping);
     totalEl.textContent = formatPrice(total);
     checkoutBtn.disabled = false;
+
+    // Resolve storage-path images used in the cart
+    appState.cart.forEach(item => {
+        const product = appData.products.find(p => p.id === item.productId);
+        if (product && product.image && !isValidImageUrl(product.image)) {
+            loadProductImage(product, `product-cart-image-${product.id}`);
+        }
+    });
 }
 
 // Checkout Process
@@ -787,9 +919,10 @@ async function processOrder() {
     };
 
     try {
-        // Save order to Firestore
-        await db.collection('orders').add(order);
-        appData.orders.push(order);
+    // Save order to Firestore
+    await db.collection('orders').add(order);
+    // Refresh local orders from Firestore
+    await fetchOrders();
 
         // Update product stock in Firestore
         for (const item of appState.cart) {
@@ -974,8 +1107,8 @@ function loadAdminProducts() {
             <td>${formatPrice(product.price)}</td>
             <td>${product.stock}</td>
             <td>
-                <button class="btn btn-sm btn-outline-primary me-1" onclick="editProduct(${product.id})">Edit</button>
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${product.id})">Delete</button>
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="editProduct('${product.id}')">Edit</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct('${product.id}')">Delete</button>
             </td>
         </tr>
     `).join('');
@@ -1018,11 +1151,23 @@ function loadAdminAnalytics() {
 }
 
 function updateOrderStatus(orderId, newStatus) {
-    const order = appData.orders.find(o => o.id === orderId);
-    if (order) {
-        order.status = newStatus;
-        showNotification(`Order ${orderId} status updated to ${newStatus}`);
+    if (typeof db === 'undefined') {
+        showNotification('Firestore is not available. Cannot update order status.', 'error');
+        return;
     }
+
+    (async () => {
+        try {
+            await db.collection('orders').doc(orderId).update({ status: newStatus });
+            // Refresh local orders and UI
+            await fetchOrders();
+            loadAdminOrders();
+            showNotification(`Order ${orderId} status updated to ${newStatus}`);
+        } catch (err) {
+            console.error('Failed to update order status:', err);
+            showNotification('Failed to update order status', 'error');
+        }
+    })();
 }
 
 function showAddProductModal() {
@@ -1031,7 +1176,36 @@ function showAddProductModal() {
 }
 
 function editProduct(productId) {
-    showNotification('Edit functionality would be implemented here', 'info');
+    // Open Add Product modal with prefilled values for editing
+    const product = appData.products.find(p => p.id === productId);
+    if (!product) {
+        showNotification('Product not found', 'error');
+        return;
+    }
+
+    // Prefill form fields
+    const modalEl = document.getElementById('addProductModal');
+    const modal = new bootstrap.Modal(modalEl);
+    const form = document.getElementById('addProductForm');
+    form.dataset.editing = productId;
+    // Use input IDs to prefill
+    document.getElementById('addProductName').value = product.name || '';
+    document.getElementById('addProductCategory').value = product.category || '';
+    document.getElementById('addProductPrice').value = product.price || '';
+    document.getElementById('addProductStock').value = product.stock || '';
+    document.getElementById('addProductBrand').value = product.brand || '';
+    document.getElementById('addProductDescription').value = product.description || '';
+    // Show preview of existing image if available
+    const previewImg = document.getElementById('addProductPreview');
+    if (isValidImageUrl(product.image)) {
+        previewImg.src = product.image;
+        previewImg.style.display = 'block';
+        form.dataset.selectedImage = product.image;
+    } else {
+        previewImg.style.display = 'none';
+        delete form.dataset.selectedImage;
+    }
+    modal.show();
 }
 
 async function deleteProduct(productId) {
@@ -1112,9 +1286,7 @@ async function addReview(productId, userId, rating, comment) {
 }
 
 // Example usage:
-fetchProducts().then(products => {
-  console.log(products);
-});
+// Removed eager console-fetch; initial data loads happen on DOMContentLoaded
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
@@ -1150,29 +1322,361 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add product form
     document.getElementById('addProductForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const inputs = e.target.elements;
-        const newProduct = {
-            name: inputs[0].value,
-            category: inputs[1].value,
-            price: parseFloat(inputs[2].value),
-            stock: parseInt(inputs[3].value),
-            brand: inputs[4].value,
-            description: inputs[5].value,
+        showLoader();
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+        // ARIA-friendly validation
+        const nameEl = document.getElementById('addProductName');
+        const categoryEl = document.getElementById('addProductCategory');
+        const priceEl = document.getElementById('addProductPrice');
+        const stockEl = document.getElementById('addProductStock');
+        const brandEl = document.getElementById('addProductBrand');
+        const descEl = document.getElementById('addProductDescription');
+
+        // Clear previous validation states
+        [nameEl, categoryEl, priceEl, stockEl, brandEl, descEl].forEach(el => {
+            if (!el) return;
+            el.removeAttribute('aria-invalid');
+            const prev = el.parentNode && el.parentNode.querySelector('.invalid-feedback');
+            if (prev) prev.remove();
+        });
+
+        const name = nameEl.value.trim();
+        const category = document.getElementById('addProductCategory').value;
+        const price = parseFloat(priceEl.value);
+        const stock = parseInt(stockEl.value);
+        const brand = brandEl.value.trim();
+        const description = descEl.value.trim();
+        const imageInput = document.getElementById('addProductImage');
+
+    const newProduct = {
+            name,
+            category,
+            price,
+            stock,
+            brand,
+            description,
             rating: 0,
-            image: 'placeholder.jpg'
+            image: ''
         };
 
-        try {
-            const docRef = await db.collection('products').add(newProduct);
-            newProduct.id = docRef.id;
+        const editingId = e.target.dataset.editing;
+
+            try {
+            // Basic validation with ARIA messages
+            const validationErrors = [];
+            if (!name) validationErrors.push({ el: nameEl, msg: 'Name is required' });
+            if (!category) validationErrors.push({ el: categoryEl, msg: 'Category is required' });
+            if (isNaN(price) || price < 0) validationErrors.push({ el: priceEl, msg: 'Enter a valid price' });
+            if (isNaN(stock) || stock < 0) validationErrors.push({ el: stockEl, msg: 'Enter valid stock' });
+            if (!brand) validationErrors.push({ el: brandEl, msg: 'Brand is required' });
+            if (!description) validationErrors.push({ el: descEl, msg: 'Description is required' });
+
+            if (validationErrors.length) {
+                validationErrors.forEach(v => {
+                    if (!v.el) return;
+                    v.el.setAttribute('aria-invalid', 'true');
+                    const msg = document.createElement('div');
+                    msg.className = 'invalid-feedback';
+                    msg.textContent = v.msg;
+                    v.el.parentNode.appendChild(msg);
+                });
+                showNotification('Fix validation errors before submitting', 'warning');
+                return;
+            }
+
+            // If a library image was selected, use it
+                if (formEl.dataset.selectedImage && (!imageInput || !imageInput.files || !imageInput.files[0])) {
+                    newProduct.image = formEl.dataset.selectedImage;
+                }
+
+            // If an image file is selected, upload it to Firebase Storage
+                if (imageInput && imageInput.files && imageInput.files[0]) {
+                try {
+                    const file = imageInput.files[0];
+                    // Use timestamp to create a unique filename
+                    const filename = `${Date.now()}_${file.name}`;
+                    // Show progress UI
+                    const progressWrap = document.getElementById('addProductProgressWrap');
+                    const progressBar = document.getElementById('addProductProgress');
+                    if (progressWrap) progressWrap.style.display = 'block';
+
+                        // Before uploading: optimistic UI insert when creating new product (no editing)
+                        let optimisticInserted = false;
+                        let optimisticIndex = -1;
+                        const editingId = e.target.dataset.editing;
+                        if (!editingId) {
+                            // create a lightweight optimistic product to show immediately
+                            const optimistic = { ...newProduct, id: 'optimistic_' + generateId(), image: '', _optimistic: true };
+                            appData.products.unshift(optimistic);
+                            loadAdminProducts();
+                            optimisticInserted = true;
+                            optimisticIndex = 0;
+                        }
+
+                        if (typeof firebase !== 'undefined' && firebase.storage && firebase.storage().ref) {
+                        const storageRef = firebase.storage().ref().child(`product-images/${filename}`);
+                        const uploadTask = storageRef.put(file);
+
+                        // Wrap upload with progress promise
+                        await new Promise((resolve, reject) => {
+                            uploadTask.on('state_changed', snapshot => {
+                                const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                                if (progressBar) { progressBar.style.width = pct + '%'; progressBar.textContent = pct + '%'; }
+                            }, err => {
+                                reject(err);
+                            }, async () => {
+                                const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                                newProduct.image = downloadURL;
+                                resolve();
+                            });
+                        });
+                    } else {
+                        // Server fallback (use XHR to track progress)
+                        const xhr = new XMLHttpRequest();
+                        const serverEndpoint = 'http://127.0.0.1:3001/create-product';
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        fd.append('name', newProduct.name);
+                        fd.append('category', newProduct.category);
+                        fd.append('price', newProduct.price);
+                        fd.append('stock', newProduct.stock);
+                        fd.append('brand', newProduct.brand);
+                        fd.append('description', newProduct.description);
+
+                        await new Promise((resolve, reject) => {
+                            xhr.upload.addEventListener('progress', (e) => {
+                                if (e.lengthComputable && progressBar) {
+                                    const pct = Math.round((e.loaded / e.total) * 100);
+                                    progressBar.style.width = pct + '%';
+                                    progressBar.textContent = pct + '%';
+                                }
+                            });
+                            xhr.onreadystatechange = function() {
+                                if (xhr.readyState === 4) {
+                                    if (xhr.status >= 200 && xhr.status < 300) {
+                                        try {
+                                            const body = JSON.parse(xhr.responseText);
+                                                            if (body && body.product) {
+                                                                newProduct.image = body.product.image || '';
+                                                                newProduct.id = body.id || (body.product && body.product.id);
+                                                                resolve({ serverCreated: true });
+                                                            } else {
+                                                                resolve({ serverCreated: false });
+                                                            }
+                                        } catch (e) {
+                                            resolve({ serverCreated: false });
+                                        }
+                                    } else {
+                                        reject(new Error('Server upload failed'));
+                                    }
+                                }
+                            };
+                            xhr.open('POST', serverEndpoint, true);
+                            xhr.send(fd);
+                        });
+                    }
+                } catch (err) {
+                    console.error('Storage upload error:', err);
+                    // If CORS or network error, attempt fallback to server-side upload endpoint
+                    try {
+                        const fallbackUrl = '/server/upload';
+                        // Attempt relative path first, then absolute if not available
+                        const serverEndpoint = (await fetch(fallbackUrl, { method: 'OPTIONS' }).then(r => r.ok).catch(() => false)) ? '/create-product' : '/create-product';
+                        const formData = new FormData();
+                        formData.append('file', imageInput.files[0]);
+                        formData.append('name', newProduct.name);
+                        formData.append('category', newProduct.category);
+                        formData.append('price', newProduct.price);
+                        formData.append('stock', newProduct.stock);
+                        formData.append('brand', newProduct.brand);
+                        formData.append('description', newProduct.description);
+                        const resp = await fetch(serverEndpoint, { method: 'POST', body: formData });
+                        if (resp.ok) {
+                            const body = await resp.json();
+                            if (body && body.product) {
+                                // Server created the Firestore doc and returned it
+                                newProduct.id = body.id || (body.product && body.product.id);
+                                newProduct.image = (body.product && body.product.image) || '';
+                                showNotification('Product created via server fallback', 'success');
+                                // Clear editing flag so we don't attempt a client-side Firestore write
+                                if (!editingId) {
+                                    // The server already created the product; skip client add
+                                    bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
+                                    delete formEl.dataset.selectedImage;
+                                    e.target.reset();
+                                    await fetchProducts();
+                                    loadAdminProducts();
+                                    return;
+                                }
+                            } else {
+                                showNotification('Server returned unexpected response', 'error');
+                            }
+                        } else {
+                            const text = await resp.text().catch(() => 'server error');
+                            showNotification('Server upload failed: ' + text, 'error');
+                        }
+                    } catch (srvErr) {
+                        console.error('Server upload fallback failed:', srvErr);
+                        const msg = err && err.message ? err.message : 'Firebase Storage upload failed';
+                        showNotification(msg, 'error');
+                    }
+                }
+            }
+
+            if (editingId) {
+                // Update existing product (if no new image provided, do not overwrite image)
+                const updateData = { ...newProduct };
+                if (!newProduct.image) delete updateData.image;
+                await db.collection('products').doc(editingId).update(updateData);
+                showNotification('Product updated successfully');
+                delete e.target.dataset.editing;
+            } else {
+                // Attempt to write to Firestore. If optimistic inserted earlier, replace it. If it fails, rollback and show retry.
+                try {
+                    const docRef = await db.collection('products').add(newProduct);
+                    newProduct.id = docRef.id;
+                    // Replace optimistic product if present
+                    const optIdx = appData.products.findIndex(p => p && p._optimistic);
+                    if (optIdx !== -1) {
+                        appData.products[optIdx] = newProduct;
+                    } else {
+                        appData.products.unshift(newProduct);
+                    }
+                    loadAdminProducts();
+                    showNotification('Product added successfully');
+                } catch (fireErr) {
+                    console.error('Firestore add failed after upload:', fireErr);
+                    // Rollback optimistic UI
+                    const rolled = appData.products.shift();
+                    loadAdminProducts();
+                    showNotification('Failed to save product. Retry?', 'error', {
+                        actionLabel: 'Retry',
+                        actionCallback: async () => {
+                            showLoader();
+                            try {
+                                const docRef = await db.collection('products').add(newProduct);
+                                newProduct.id = docRef.id;
+                                appData.products.unshift(newProduct);
+                                loadAdminProducts();
+                                showNotification('Product saved after retry');
+                            } catch (retryErr) {
+                                console.error('Retry failed:', retryErr);
+                                showNotification('Retry failed. Please try again later.', 'error');
+                            } finally { hideLoader(); }
+                        }
+                    });
+                    // rethrow to outer catch to surface UI state
+                    throw fireErr;
+                }
+            }
+
             bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
+            delete formEl.dataset.selectedImage;
             e.target.reset();
-            showNotification('Product added successfully');
-            fetchProducts(); // Refresh product list from Firestore
+            await fetchProducts(); // Refresh product list from Firestore
             loadAdminProducts();
-        } catch (error) {
-            showNotification('Failed to add product', 'error');
+            } catch (error) {
+                console.error('Product save failed:', error);
+                showNotification('Failed to save product', 'error');
+            } finally {
+                hideLoader();
+                if (submitBtn) submitBtn.disabled = false;
+                const progressWrap = document.getElementById('addProductProgressWrap');
+                const progressBar = document.getElementById('addProductProgress');
+                if (progressWrap) progressWrap.style.display = 'none';
+                if (progressBar) { progressBar.style.width = '0%'; progressBar.textContent = '0%'; }
+            }
+    });
+
+    // Image preview and validation
+    const imageInput = document.getElementById('addProductImage');
+    const previewImg = document.getElementById('addProductPreview');
+    const chooseFromLibraryBtn = document.getElementById('chooseFromLibraryBtn');
+    const formEl = document.getElementById('addProductForm');
+
+    imageInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+
+        // Validate type
+        if (!/^image\/(jpeg|jpg|png)$/.test(file.type)) {
+            showNotification('Only JPG and PNG images are allowed.', 'warning');
+            this.value = '';
+            previewImg.style.display = 'none';
+            return;
+        }
+
+        // Validate size (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            showNotification('Image must be smaller than 2MB.', 'warning');
+            this.value = '';
+            previewImg.style.display = 'none';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            previewImg.style.display = 'block';
+            // clear any selected library image
+            delete formEl.dataset.selectedImage;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    chooseFromLibraryBtn.addEventListener('click', async function() {
+        // Open image library modal and load images from Firebase Storage
+        const modal = new bootstrap.Modal(document.getElementById('imageLibraryModal'));
+        const grid = document.getElementById('imageLibraryGrid');
+        grid.innerHTML = '<div class="text-muted">Loading images...</div>';
+
+            try {
+            if (typeof firebase === 'undefined' || typeof firebase.storage === 'undefined') {
+                throw new Error('firebase.storage is not defined. Make sure Firebase Storage SDK is loaded and firebase.initializeApp was called.');
+            }
+
+            const listRef = firebase.storage().ref().child('product-images');
+            const res = await listRef.listAll();
+            if (!res.items.length) {
+                grid.innerHTML = '<div class="text-muted">No images in library.</div>';
+            } else {
+                grid.innerHTML = '';
+                // Load thumbnails
+                await Promise.all(res.items.map(async (itemRef) => {
+                    try {
+                        const url = await itemRef.getDownloadURL();
+                        const img = document.createElement('img');
+                        img.src = url;
+                        img.style.width = '120px';
+                        img.style.height = '120px';
+                        img.style.objectFit = 'cover';
+                        img.style.cursor = 'pointer';
+                        img.style.borderRadius = '8px';
+                        img.addEventListener('click', function() {
+                            // Select this image for product
+                            previewImg.src = url;
+                            previewImg.style.display = 'block';
+                            // Clear file input
+                            imageInput.value = '';
+                            // store selected image url in form dataset so submit handler knows
+                            formEl.dataset.selectedImage = url;
+                            modal.hide();
+                        });
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'm-1';
+                        wrapper.appendChild(img);
+                        grid.appendChild(wrapper);
+                    } catch (err) {
+                        console.error('Failed to load image URL', err);
+                    }
+                }));
+            }
+            modal.show();
+            } catch (err) {
+            console.error('Failed to list images:', err);
+            const msg = err && err.message ? err.message : 'Failed to load images from Storage';
+            grid.innerHTML = `<div class="text-danger">${msg}</div>`;
         }
     });
     
@@ -1186,9 +1690,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize app
     updateAuthUI();
     updateCartUI();
-    loadHomePage();
-    fetchProducts();
-    fetchUsers();
-    fetchOrders();
-    fetchReviews(); // <-- Add this line
+    // Load data from Firestore first, then render UI
+    (async function init() {
+        try {
+            // Guard: ensure firebase globals exist
+            if (typeof db === 'undefined' || typeof auth === 'undefined') {
+                console.warn('Firebase globals db/auth not found. App will run with local data until Firebase is available.');
+                loadHomePage();
+                return;
+            }
+
+            await Promise.all([
+                fetchProducts(),
+                fetchUsers(),
+                fetchOrders(),
+                fetchReviews()
+            ]);
+
+            // After data loaded, render UI
+            loadHomePage();
+        } catch (err) {
+            console.error('Initialization failed:', err);
+            loadHomePage();
+        }
+    })();
 });

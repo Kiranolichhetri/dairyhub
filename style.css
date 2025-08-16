@@ -44,26 +44,27 @@
   --color-bg-8: rgba(6, 182, 212, 0.08); /* Light cyan */
 
   /* Semantic Color Tokens (Light Mode) */
-  --color-background: var(--color-cream-50);
-  --color-surface: var(--color-cream-100);
-  --color-text: var(--color-slate-900);
-  --color-text-secondary: var(--color-slate-500);
-  --color-primary: var(--color-teal-500);
-  --color-primary-hover: var(--color-teal-600);
-  --color-primary-active: var(--color-teal-700);
-  --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
-  --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
-  --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
-  --color-border: rgba(var(--color-brown-600-rgb), 0.2);
-  --color-btn-primary-text: var(--color-cream-50);
-  --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
-  --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
-  --color-error: var(--color-red-500);
-  --color-success: var(--color-teal-500);
-  --color-warning: var(--color-orange-500);
-  --color-info: var(--color-slate-500);
-  --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
-  --color-select-caret: rgba(var(--color-slate-900-rgb), 0.8);
+  /* Dairy-themed semantic colors: soft cream background, warm accents, teal primary */
+  --color-background: #fffaf5; /* soft ivory */
+  --color-surface: #fffdf9; /* subtle lighter surface */
+  --color-text: #183235; /* deep teal-black for good contrast */
+  --color-text-secondary: #516268; /* muted slate for secondary text */
+  --color-primary: #2a9d8f; /* fresh teal/green accent */
+  --color-primary-hover: #23877a;
+  --color-primary-active: #1e6b63;
+  --color-secondary: rgba(231, 211, 196, 0.88); /* warm cream accent */
+  --color-secondary-hover: rgba(231, 211, 196, 1);
+  --color-secondary-active: rgba(208, 185, 165, 1);
+  --color-border: rgba(220, 210, 200, 0.6); /* soft warm border */
+  --color-btn-primary-text: #ffffff;
+  --color-card-border: rgba(220, 210, 200, 0.35);
+  --color-card-border-inner: rgba(220, 210, 200, 0.18);
+  --color-error: #c72d2d; /* strong red for errors */
+  --color-success: #2a9d8f; /* match primary */
+  --color-warning: #d86b3a; /* warm orange */
+  --color-info: #6b7c80; /* subdued info color */
+  --color-focus-ring: rgba(42,157,143,0.18);
+  --color-select-caret: rgba(24,50,53,0.8);
 
   /* Common style patterns */
   --focus-ring: 0 0 0 3px var(--color-focus-ring);
@@ -412,9 +413,32 @@ pre code {
   box-shadow: var(--focus-ring);
 }
 
+/* Global loader (small top-right spinner) */
+.global-loader {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid var(--color-card-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  z-index: 2000;
+}
+
+/* Toast container tweaks */
+.toast-container .toast {
+  min-width: 260px;
+}
+
 .btn--primary {
   background: var(--color-primary);
   color: var(--color-btn-primary-text);
+  box-shadow: 0 6px 18px rgba(var(--color-success-rgb,33,128,141), 0.08);
+  transition: box-shadow var(--duration-normal) var(--ease-standard), transform var(--duration-normal) var(--ease-standard);
 }
 
 .btn--primary:hover {
@@ -784,13 +808,14 @@ select.form-control {
 
 /* Hero Section */
 .hero {
-    background: linear-gradient(135deg, var(--color-bg-1), var(--color-bg-3));
+  background: linear-gradient(135deg, rgba(var(--color-success-rgb,33,128,141),0.06), rgba(255,250,240,0.6));
     padding: var(--space-32) 0;
     margin-bottom: var(--space-32);
+    border-bottom: 1px solid var(--color-card-border-inner);
 }
 
 .hero-title {
-    font-size: var(--font-size-4xl);
+  font-size: 2.25rem;
     font-weight: var(--font-weight-bold);
     color: var(--color-text);
     margin-bottom: var(--space-16);
@@ -803,15 +828,15 @@ select.form-control {
 }
 
 .hero-image {
-    width: 100%;
-    height: 300px;
-    background: var(--color-bg-2);
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-lg);
+  width: 100%;
+  height: 320px;
+  background: linear-gradient(180deg, rgba(var(--color-success-rgb,33,128,141),0.04), rgba(255,255,255,0.6));
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-lg);
 }
 
 .hero-image::before {
@@ -852,7 +877,7 @@ select.form-control {
 .category-icon {
     font-size: 3rem;
     margin-bottom: var(--space-16);
-    color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .category-card h5 {
@@ -868,19 +893,19 @@ select.form-control {
 
 /* Product Cards */
 .product-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-card-border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    transition: all var(--duration-normal) var(--ease-standard);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+  background: linear-gradient(180deg, var(--color-surface), rgba(255,255,255,0.96));
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .product-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(var(--color-success-rgb,33,128,141), 0.06);
+  transform: translateY(-6px);
 }
 
 .product-image-placeholder {
@@ -982,9 +1007,26 @@ select.form-control {
     color: var(--color-text-secondary);
 }
 
-.cart-item-image::before {
-    content: "📦";
-    font-size: var(--font-size-xl);
+.cart-item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-base);
+}
+
+/* Product and cart image styles */
+.product-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-base);
+}
+
+.cart-image {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .quantity-controls {
