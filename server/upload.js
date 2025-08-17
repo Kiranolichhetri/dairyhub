@@ -30,6 +30,23 @@ app.use('/static', express.static(UPLOAD_DIR));
 const port = process.env.PORT || 3001;
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Serve static frontend files (adjust path as needed)
+app.use(express.static(path.join(__dirname, '../')));
+
+// SPA fallback for clean URLs (add this after static middleware)
+app.use((req, res, next) => {
+  if (
+    req.method === 'GET' &&
+    !req.path.startsWith('/api') && // allow API routes
+    !req.path.startsWith('/static') && // allow static assets
+    !req.path.match(/\\.[a-zA-Z0-9]+$/) // skip requests for files with extensions
+  ) {
+    res.sendFile(path.join(__dirname, '../index.html'));
+  } else {
+    next();
+  }
+});
+
 // Helpers
 async function saveToLocal(buffer, filename) {
   const localPath = path.join(UPLOAD_DIR, filename);

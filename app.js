@@ -1,3 +1,97 @@
+// Generate a URL-friendly slug from product name
+function slugify(str) {
+    return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+// Find product by slug
+function findProductBySlug(slug) {
+    return appData.products.find(p => slugify(p.name) === slug);
+}
+// Set dynamic title and meta description for SEO
+function setMetaTags(page) {
+    let title = 'DairyHub - Premium Dairy Products';
+    let desc = 'Premium dairy products delivered fresh to your doorstep. Shop milk, cheese, butter, yogurt and more from trusted farms.';
+    switch(page) {
+        case 'home':
+            title = 'DairyHub - Premium Dairy Products in Nepal';
+            desc = 'Order fresh milk, cheese, butter, yogurt, and more from DairyHub. Fast delivery in Kathmandu and beyond.';
+            break;
+        case 'products':
+            title = 'Shop Dairy Products Online | DairyHub';
+            desc = 'Browse and buy milk, cheese, butter, yogurt, ice cream, and more. Quality dairy products delivered to your door.';
+            break;
+        case 'cart':
+            title = 'Your Shopping Cart | DairyHub';
+            desc = 'View and manage your cart. Secure checkout for fresh dairy products.';
+            break;
+        case 'orders':
+            title = 'My Orders | DairyHub';
+            desc = 'Track your DairyHub orders and view order history.';
+            break;
+        case 'profile':
+            title = 'My Profile | DairyHub';
+            desc = 'Manage your DairyHub account, contact info, and preferences.';
+            break;
+        case 'admin':
+            title = 'Admin Dashboard | DairyHub';
+            desc = 'Admin: Manage products, orders, and analytics for DairyHub.';
+            break;
+        case 'checkout':
+            title = 'Checkout | DairyHub';
+            desc = 'Complete your DairyHub order. Fast, secure checkout for dairy delivery.';
+            break;
+        case 'productDetail':
+            if (appState.currentProduct) {
+                title = `${appState.currentProduct.name} | DairyHub`;
+                desc = `${appState.currentProduct.description || 'Buy this dairy product online at DairyHub.'}`;
+            }
+            break;
+    }
+    document.title = title;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'description';
+        document.head.appendChild(meta);
+    }
+    meta.content = desc;
+}
+// Render live reviews in homepage testimonials section
+function renderHomepageTestimonials() {
+    const grid = document.getElementById('testimonialsGrid');
+    if (!grid) return;
+    // Get latest 3 reviews with user info
+    const reviews = (appData.reviews || []).slice(-3).reverse();
+    if (!reviews.length) {
+        grid.innerHTML = '<div class="col-12 text-center text-muted">No customer reviews yet.</div>';
+        return;
+    }
+    grid.innerHTML = reviews.map(r => {
+        const user = appData.users && appData.users.find(u => u.id === r.userId);
+        const author = user ? user.username : 'Customer';
+        const avatar = user && user.avatar ? user.avatar :
+            (user && user.gender === 'male' ? 'https://randomuser.me/api/portraits/men/45.jpg' :
+            user && user.gender === 'female' ? 'https://randomuser.me/api/portraits/women/68.jpg' :
+            'https://randomuser.me/api/portraits/lego/1.jpg');
+        const stars = '★★★★★☆☆☆☆☆'.slice(5 - (r.rating || 5), 10 - (r.rating || 5));
+        return `
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <p class="card-text" itemprop="reviewBody">${r.comment ? r.comment.replace(/</g,'&lt;') : ''}</p>
+                    <div class="d-flex align-items-center mt-3">
+                        <img src="${avatar}" alt="Customer photo" class="rounded-circle me-3" width="48" height="48">
+                        <div>
+                            <span class="fw-bold" itemprop="author">${author}</span><br>
+                            <span class="text-warning">${stars}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
 // DairyHub eCommerce Application
 
 // Application Data
@@ -173,13 +267,13 @@ function hideLoader() {
 function showPage(page) {
     // Hide all pages
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    
     // Show target page
     const targetPage = document.getElementById(page + 'Page');
     if (targetPage) {
         targetPage.classList.add('active');
         appState.currentPageName = page;
-        
+        // Update meta tags for SEO
+        setMetaTags(page);
         // Load page content
         switch(page) {
             case 'home':
@@ -490,28 +584,31 @@ function createProductCard(product) {
     const stockClass = product.stock > 10 ? 'in-stock' : product.stock > 0 ? 'low-stock' : 'out-of-stock';
     const stockText = product.stock > 10 ? 'In Stock' : product.stock > 0 ? `Only ${product.stock} left` : 'Out of Stock';
     
+    const slug = slugify(product.name);
     return `
         <div class="product-card">
-            <div class="product-image-placeholder" onclick="showProductDetail('${product.id}')">
-                <img id="product-image-${product.id}" ${isValidImageUrl(product.image) ? `src="${product.image}"` : ''} alt="${product.name}" class="product-image" style="display:${isValidImageUrl(product.image) ? 'block' : 'none'}">
-            </div>
-            <div class="card-body">
-                <div class="product-brand">${product.brand}</div>
-                <h5 class="product-title cursor-pointer" onclick="showProductDetail('${product.id}')">${product.name}</h5>
-                <p class="product-description">${product.description}</p>
-                <div class="product-rating">
-                    <span class="rating-stars">${generateStars(product.rating)}</span>
-                    <span>(${product.rating})</span>
+            <a href="/products/${slug}" class="text-decoration-none" onclick="event.preventDefault(); navigateToProductSlug('${slug}');">
+                <div class="product-image-placeholder">
+                    <img id="product-image-${product.id}" ${isValidImageUrl(product.image) ? `src=\"${product.image}\"` : ''} alt="${product.name}" class="product-image" style="display:${isValidImageUrl(product.image) ? 'block' : 'none'}">
                 </div>
-                <div class="stock-info ${stockClass}">${stockText}</div>
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="product-price">${formatPrice(product.price)}</span>
-                    <button class="btn btn-primary btn-sm" onclick="addToCart('${product.id}')" 
-                            ${product.stock === 0 ? 'disabled' : ''}>
-                        Add to Cart
-                    </button>
+                <div class="card-body">
+                    <div class="product-brand">${product.brand}</div>
+                    <h5 class="product-title cursor-pointer">${product.name}</h5>
+                    <p class="product-description">${product.description}</p>
+                    <div class="product-rating">
+                        <span class="rating-stars">${generateStars(product.rating)}</span>
+                        <span>(${product.rating})</span>
+                    </div>
+                    <div class="stock-info ${stockClass}">${stockText}</div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="product-price">${formatPrice(product.price)}</span>
+                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart('${product.id}')" 
+                                ${product.stock === 0 ? 'disabled' : ''}>
+                            Add to Cart
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
     `;
 }
@@ -553,11 +650,38 @@ function changePage(page) {
 function showProductDetail(productId) {
     const product = appData.products.find(p => p.id === productId);
     if (!product) return;
-    
+    // Update URL to clean format
+    const slug = slugify(product.name);
+    history.pushState({ page: 'productDetail', slug }, '', `/products/${slug}`);
     appState.currentProduct = product;
     showPage('productDetail');
     loadProductDetail(product);
 }
+
+// Navigate to product by slug (for clean URLs)
+function navigateToProductSlug(slug) {
+    const product = findProductBySlug(slug);
+    if (product) {
+        appState.currentProduct = product;
+        history.pushState({ page: 'productDetail', slug }, '', `/products/${slug}`);
+        showPage('productDetail');
+        loadProductDetail(product);
+    }
+}
+// Handle browser navigation (back/forward) for clean URLs
+window.addEventListener('popstate', function(e) {
+    if (e.state && e.state.page === 'productDetail' && e.state.slug) {
+        const product = findProductBySlug(e.state.slug);
+        if (product) {
+            appState.currentProduct = product;
+            showPage('productDetail');
+            loadProductDetail(product);
+            return;
+        }
+    }
+    // Default: show page from state or home
+    showPage((e.state && e.state.page) || 'home');
+});
 
 function loadProductDetail(product) {
     const imageContainer = document.getElementById('productImage');
@@ -1709,9 +1833,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // After data loaded, render UI
             loadHomePage();
+            renderHomepageTestimonials();
         } catch (err) {
             console.error('Initialization failed:', err);
             loadHomePage();
         }
     })();
+// When reviews are updated, refresh homepage testimonials
+const origFetchReviews = fetchReviews;
+fetchReviews = async function() {
+    await origFetchReviews.apply(this, arguments);
+    renderHomepageTestimonials();
+};
 });
