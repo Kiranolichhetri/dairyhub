@@ -446,7 +446,7 @@ function loadCategories() {
 function loadFeaturedProducts() {
     const container = document.getElementById('featuredProducts');
     const featured = appData.products.slice(0, 6);
-    container.innerHTML = featured.map(product => `
+    container.innerHTML = featured.map product => `
         <div class="col-lg-4 col-md-6 mb-4">
             ${createProductCard(product)}
         </div>
@@ -1409,8 +1409,54 @@ async function addReview(productId, userId, rating, comment) {
     }
 }
 
-// Example usage:
-// Removed eager console-fetch; initial data loads happen on DOMContentLoaded
+// Frontend JS (e.g., in app.js)
+
+// Email/Password Signup
+async function signupWithEmail(email, password, name) {
+  try {
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    const user = userCredential.user;
+    // Optionally update display name
+    await user.updateProfile({ displayName: name });
+    // Send user info to backend to create MongoDB profile
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uid: user.uid,
+        name: name,
+        email: user.email,
+        provider: 'email'
+      })
+    });
+    alert('Signup successful!');
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// Google Signup/Login
+async function signInWithGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    const result = await firebase.auth().signInWithPopup(provider);
+    const user = result.user;
+    // Send user info to backend to create MongoDB profile
+    await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        provider: 'google'
+      })
+    });
+    alert('Google login successful!');
+  } catch (err) {
+    alert(err.message);
+  }
+}
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
@@ -1611,52 +1657,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         formData.append('file', imageInput.files[0]);
                         formData.append('name', newProduct.name);
                         formData.append('category', newProduct.category);
-                        formData.append('price', newProduct.price);
-                        formData.append('stock', newProduct.stock);
-                        formData.append('brand', newProduct.brand);
-                        formData.append('description', newProduct.description);
-                        const resp = await fetch(serverEndpoint, { method: 'POST', body: formData });
-                        if (resp.ok) {
-                            const body = await resp.json();
-                            if (body && body.product) {
-                                // Server created the Firestore doc and returned it
-                                newProduct.id = body.id || (body.product && body.product.id);
-                                newProduct.image = (body.product && body.product.image) || '';
-                                showNotification('Product created via server fallback', 'success');
-                                // Clear editing flag so we don't attempt a client-side Firestore write
-                                if (!editingId) {
-                                    // The server already created the product; skip client add
-                                    bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
-                                    delete formEl.dataset.selectedImage;
-                                    e.target.reset();
-                                    await fetchProducts();
-                                    loadAdminProducts();
-                                    return;
-                                }
-                            } else {
-                                showNotification('Server returned unexpected response', 'error');
-                            }
-                        } else {
-                            const text = await resp.text().catch(() => 'server error');
-                            showNotification('Server upload failed: ' + text, 'error');
-                        }
-                    } catch (srvErr) {
-                        console.error('Server upload fallback failed:', srvErr);
-                        const msg = err && err.message ? err.message : 'Firebase Storage upload failed';
-                        showNotification(msg, 'error');
-                    }
-                }
-            }
-
-            if (editingId) {
-                // Update existing product (if no new image provided, do not overwrite image)
-                const updateData = { ...newProduct };
-                if (!newProduct.image) delete updateData.image;
-                await db.collection('products').doc(editingId).update(updateData);
-                showNotification('Product updated successfully');
-                delete e.target.dataset.editing;
-            } else {
-                // Attempt to write to Firestore. If optimistic inserted earlier, replace it. If it fails, rollback and show retry.
                 try {
                     const docRef = await db.collection('products').add(newProduct);
                     newProduct.id = docRef.id;
